@@ -5,13 +5,20 @@ class VimEditor():
         self.text = text
         self.status_label = status_label
         self.enabled = False
-        self.cutting = False
-        self.copying = False
+        self.cutting = False # storing if to go down the cutting options route
+        self.copying = False # storing if to go down the copying options route
+        # if true => paste inserts on a new line alone the line copied
         self.whole_line_copied = False
+        # help store the previous actions for '.' command
         self.last_action = None
         self.args_last_action = None
-        # self.full_command = ''
+        # f was pressed => True => find the next index of the character
+        self.waitting_for_find_next = False  
+        # F was pressed => True => find the prev index of the character
+        self.waitting_for_find_prev = False
+
         self.mode = 'normal' # normal | insert | command
+        # storing command strings
         self.command_buffer = ''
 
         # save and exit functions callback from text_editor
@@ -61,7 +68,6 @@ class VimEditor():
         if self.status_label.cget("text") != text:
             self.status_label.config(text=text)
             # optional: force immediate paint
-            # self.status_label.update_idletasks()
 
     def current_line_col(self):
         """return: current line and column index"""
@@ -152,6 +158,12 @@ class VimEditor():
 
         if self.copying == True:
             return self.copy_options(event)
+        
+        if self.waitting_for_find_next == True:
+            return self.find_next(event)
+
+        if self.waitting_for_find_prev == True:
+            return self.find_prev(event)
 
         # only for normal mode
         ks = event.keysym
@@ -202,6 +214,16 @@ class VimEditor():
         # open line and enter insert mode
         if ks == 'o':
             self.open_line()
+
+        # find next character
+        if ks == 'f':
+            self.show_status('f')
+            self.waitting_for_find_next = True
+
+        # find prev character
+        if ch == 'F':
+            self.show_status('F')
+            self.waitting_for_find_prev = True
 
         # repeat last action
         if ch == '.':
@@ -306,10 +328,6 @@ class VimEditor():
             else:
                 self.exit_cut_options()
                 return "break"
-        # exiting d cut options
-        elif ks == 'Escape':
-            self.exit_cut_options()
-            return "break"
         else:
             self.exit_cut_options()
             return "break"
@@ -365,6 +383,36 @@ class VimEditor():
             self.last_action = self.paste
         except tk.TclError:
             pass
+
+    def find_next(self, event):
+        """f : find next character inserted"""
+        char = event.char
+        current_position = self.text.index('insert')
+        line = self.current_line_col()[0]
+        line_end = f"{line}.0 lineend"
+        found = self.text.search(char, f"{current_position} +1c", line_end)
+        if found:
+            self.text.mark_set('insert', found)
+            self.text.see('insert')
+        self.waitting_for_find_next = False
+        self.show_status('-- NORMAL --')
+        return "break"
+        
+    def find_prev(self, event):
+        """F : find prev character inserted"""
+        char = event.char
+        current_position = self.text.index('insert')
+        line = self.current_line_col()[0]
+        line_start = f"{line}.0"
+        end = f"{current_position}"
+        found = self.text.search(char, end, line_start, backwards = True)
+        if found:
+            self.text.mark_set('insert', found)
+            self.text.see('insert')
+        self.waitting_for_find_prev = False
+        self.show_status('-- NORMAL --')
+        return "break"
+
 
     def repeat_last_change(self):
         """'.' : repeat the last change such as commands 'x' or 'dd'"""
@@ -429,6 +477,24 @@ class VimEditor():
         if not self.enabled:
             return None
         
+        # 'Escape' being binded to this function doesn't go through on_key()
+        # Handle escape for commands
+        if self.cutting:
+            self.exit_cut_options()
+
+        if self.copying:
+            self.exit_copy_options()
+
+        if self.waitting_for_find_next:
+            self.waitting_for_find_next = False
+            self.show_status('-- NORMAL --')
+            return "break"
+        
+        if self.waitting_for_find_prev:
+            self.waitting_for_find_prev = False
+            self.show_status('-- NORMAL --')
+            return "break"
+
         # if vim mode is enabled, and is in insert|command mode, we enter back normal 
         if self.mode == 'insert' or self.mode == 'command':
             self.enter_normal()
@@ -445,6 +511,7 @@ class VimEditor():
 #              -pasting (P)
 #              -open line and change to insert mode (o)
 #              -repeat last change (.) 
+#              -find next character
 
 # INSERT MODE: 
 
