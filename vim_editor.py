@@ -336,10 +336,9 @@ class VimEditor():
         """y : handles copying functions in normal mode"""
         ks = event.keysym
         char = event.char
-        
         # ignore modifier keys (avoiding cases where: e.g. the key returned by event is 'shift' for 'y$')
         if ks in ['Shift_L', 'Shift_R', 'Control_L', 'Control_R', 'Alt_L', 'Alt_R']:
-            return None
+            return "break"
         
         # if 'yy' - copy whole line
         if ks == 'y':
@@ -470,6 +469,10 @@ class VimEditor():
             self.save_callback()
             self.exit_callback()
 
+        # q! command - exit all without saving
+        if cmd == 'q!':
+            tk._default_root.destroy()
+
         self.command_buffer = ''
 
     def on_escape(self, event):
@@ -513,8 +516,10 @@ class VimEditor():
 #              -repeat last change (.) 
 #              -find next character
 
-# INSERT MODE: 
+# INSERT MODE: -Ctrl + t : indent line
+#              -Ctrl + d : unindent line
 
 # COMMAND MODE: -saving the file (:w)
 #               -exiting the file (:q)
 #               -save and exit (:wq)
+#               -exit without saving (:q!)

@@ -201,7 +201,9 @@ class TextEditor():
         # other function bindings on text
         text.bind("<Control-Right>", lambda event: self.move_end_word(event))
         text.bind("<Control-BackSpace>", lambda event: self.delete_whole_word(event))
-        
+        text.bind("<Control-t>", lambda event: self.indent_line(event))
+        text.bind("<Control-d>", lambda event: self.unindent_line(event))
+
         self.notebook.select(frame)
 
         # initiating a vimEditor
@@ -414,6 +416,22 @@ class TextEditor():
 
         return "break"
     
+    def indent_line(self, event):
+        """Control + t : Indenting line"""
+        text = event.widget
+        line = text.index('insert').split('.')[0]
+        text.insert(f"{line}.0", '\t')
+        return "break"
+    
+    def unindent_line(self, event):
+        """Control + d : Unindenting line"""
+        text = event.widget
+        line = text.index('insert').split('.')[0]
+        if text.get(f"{line}.0") == '\t':
+            text.delete(f"{line}.0", f"{line}.0 +1c")
+        return "break"
+
+
     def undo(self, event = None):
         """Undo function"""
         text = self.get_current_text()
